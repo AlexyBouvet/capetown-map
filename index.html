@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cape Town Guide Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  #map { width: 100vw; height: 100vh; }
+  .legend {
+    position: absolute; top: 10px; right: 10px; z-index: 1000;
+    background: white; padding: 12px 16px; border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 13px;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .legend h3 { margin-bottom: 8px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="legend">
+  <h3>Cape Town Guide (86 spots)</h3>
+      <label data-cat="Fine Dining" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Fine Dining', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#e74c3c"></span>Fine Dining (10)</label>
+      <label data-cat="Dinner" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Dinner', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#e67e22"></span>Dinner (12)</label>
+      <label data-cat="Casual / Lunch" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Casual / Lunch', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f39c12"></span>Casual / Lunch (15)</label>
+      <label data-cat="Brunch & Cafe" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Brunch & Cafe', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f1c40f"></span>Brunch & Cafe (10)</label>
+      <label data-cat="Bar / Wine" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Bar / Wine', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#9b59b6"></span>Bar / Wine (7)</label>
+      <label data-cat="Bar / Nightlife" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Bar / Nightlife', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#8e44ad"></span>Bar / Nightlife (5)</label>
+      <label data-cat="Wellness" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Wellness', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#16a085"></span>Wellness (2)</label>
+      <label data-cat="Market" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Market', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#2ecc71"></span>Market (5)</label>
+      <label data-cat="Activity" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Activity', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#3498db"></span>Activity (4)</label>
+      <label data-cat="Wine Farm" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Wine Farm', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#c0392b"></span>Wine Farm (3)</label>
+      <label data-cat="Beach" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Beach', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#1abc9c"></span>Beach (6)</label>
+      <label data-cat="Hike / Viewpoint" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Hike / Viewpoint', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#27ae60"></span>Hike / Viewpoint (6)</label>
+      <label data-cat="Sunset Spot" style="cursor:pointer;display:flex;align-items:center;gap:6px;margin:2px 0"><input type="checkbox" checked onchange="toggleCat('Sunset Spot', this.checked)"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#e74c3c"></span>Sunset Spot (1)</label>
+</div>
+<script>
+var map = L.map('map').setView([-33.92, 18.42], 12);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+var markers = {};
+var allMarkers = [];
+
+function addPin(lat, lon, popup, color, cat) {
+  var marker = L.circleMarker([lat, lon], {
+    radius: 7, fillColor: color, color: '#fff', weight: 1.5,
+    opacity: 1, fillOpacity: 0.85
+  }).bindPopup(popup);
+  marker._cat = cat;
+  if (!markers[cat]) markers[cat] = [];
+  markers[cat].push(marker);
+  allMarkers.push(marker);
+  marker.addTo(map);
+}
+
+function toggleCat(cat, show) {
+  if (!markers[cat]) return;
+  markers[cat].forEach(function(m) {
+    if (show) m.addTo(map); else map.removeLayer(m);
+  });
+}
+
+  addPin(-33.9267, 18.4193, "<b>Fyn</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$$<br><small>37 Parliament St, Cape Town CBD, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-33.9258, 18.4218, "<b>Belly of the Beast</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$$<br><small>110 Harrington St, Cape Town CBD, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-33.9273056, 18.4573803, "<b>The Pot Luck Club</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$<br><small>375 Albert Rd, Woodstock, Cape Town, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-33.9276495, 18.4578781, "<b>Salon</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$$<br><small>375 Albert Rd, Woodstock, Cape Town, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-33.919685, 18.3854458, "<b>Arlecchino</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$<br><small>16 Regent Rd, Sea Point, Cape Town, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.9324446, 18.4084023, "<b>Asoka</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$<br><small>68 Kloof St, Gardens, Cape Town, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.923, 18.42, "<b>Between Us</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$<br><small>176 Bree St, Cape Town CBD, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.9278661, 18.4128727, "<b>CLUB KLOOF</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$<br><small>84 Kloof St, Cape Town, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.9298635, 18.4108525, "<b>elgr</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$$<br><small>75 Kloof St, Gardens, Cape Town, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.9247, 18.417, "<b>Ouzeri</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$<br><small>58 Wale St, Cape Town CBD, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.9220277, 18.3818181, "<b>KIKI</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$$<br><small>85 Regent Rd, Sea Point, Cape Town, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.9281972, 18.4121018, "<b>Kloof Street House</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$<br><small>30 Kloof St, Gardens, Cape Town, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.923, 18.4215, "<b>Iron Steak Restaurant</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$<br><small>114 Bree St, Cape Town CBD, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.9165, 18.3893, "<b>Arthur's Mini Super</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $<br><small>15 Arthur's Rd, Sea Point, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9299444, 18.4110002, "<b>BLONDIE</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $<br><small>71 Kloof St, Gardens, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9216076, 18.382108, "<b>BRASH</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $<br><small>90 Regent Rd, Sea Point, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9216076, 18.382108, "<b>JARRYDS.</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $$<br><small>90 Regent Rd, Sea Point, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9161338, 18.389404, "<b>Maggy Lou's</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $<br><small>206 Main Rd, Sea Point, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.921, 18.419, "<b>Pizza Shed</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $<br><small>231 Bree St, Cape Town CBD, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.923, 18.4215, "<b>MAX Bagels</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $<br><small>120 Bree St, Cape Town CBD, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.927373, 18.413373, "<b>Habibi</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $<br><small>115 Kloof St, Gardens, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9285632, 18.4106186, "<b>Cafe Sofi</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $$<br><small>2 Park Rd, Gardens, Cape Town, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.9232, 18.4205, "<b>Cafe Frank</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $<br><small>160 Bree St, Cape Town CBD, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.9212286, 18.3826163, "<b>Kanela Cafe</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $<br><small>78 Regent Rd, Sea Point, Cape Town, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.9112749, 18.3921593, "<b>Naked Coffee</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $<br><small>2 Wisbeach Rd, Sea Point, Cape Town, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.9161338, 18.389404, "<b>Pauline's</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $<br><small>277 Main Rd, Sea Point, Cape Town, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.924, 18.4225, "<b>Rosetta Roastery</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $<br><small>97 Bree St, Cape Town CBD, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.9349176, 18.4068064, "<b>Specialized</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $<br><small>Kloof St, Gardens, Cape Town, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.9111208, 18.4126666, "<b>The Strangers Club</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $$<br><small>1 Braemar Rd, Green Point, Cape Town, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.929079, 18.4110298, "<b>One Park Road</b><br><span style='color:#9b59b6'>Bar / Wine</span> \u00b7 $$<br><small>1 Park Rd, Gardens, Cape Town, South Africa</small>", "#9b59b6", "Bar / Wine");
+  addPin(-33.9238, 18.4222, "<b>Culture</b><br><span style='color:#9b59b6'>Bar / Wine</span> \u00b7 $$<br><small>103 Bree St, Cape Town CBD, South Africa</small>", "#9b59b6", "Bar / Wine");
+  addPin(-33.923, 18.4215, "<b>Leo's</b><br><span style='color:#9b59b6'>Bar / Wine</span> \u00b7 $$<br><small>120 Bree St, Cape Town CBD, South Africa</small>", "#9b59b6", "Bar / Wine");
+  addPin(-33.9245, 18.4168, "<b>Openwine</b><br><span style='color:#9b59b6'>Bar / Wine</span> \u00b7 $$<br><small>72 Wale St, Cape Town CBD, South Africa</small>", "#9b59b6", "Bar / Wine");
+  addPin(-33.9242, 18.423, "<b>Tannin</b><br><span style='color:#9b59b6'>Bar / Wine</span> \u00b7 $$<br><small>86 Bree St, Cape Town CBD, South Africa</small>", "#9b59b6", "Bar / Wine");
+  addPin(-33.9313401, 18.4064042, "<b>Publik Wine Bar</b><br><span style='color:#9b59b6'>Bar / Wine</span> \u00b7 $$<br><small>11D Kloof Nek Rd, Tamboerskloof, Cape Town, South Africa</small>", "#9b59b6", "Bar / Wine");
+  addPin(-33.9316182, 18.4091458, "<b>Sincero</b><br><span style='color:#9b59b6'>Bar / Wine</span> \u00b7 $$<br><small>108 Kloof St, Gardens, Cape Town, South Africa</small>", "#9b59b6", "Bar / Wine");
+  addPin(-33.919685, 18.3854458, "<b>BABY</b><br><span style='color:#8e44ad'>Bar / Nightlife</span> \u00b7 $$$<br><small>13 Regent Rd, Sea Point, Cape Town, South Africa</small>", "#8e44ad", "Bar / Nightlife");
+  addPin(-33.9222, 18.4175, "<b>The Athletic Club & Social</b><br><span style='color:#8e44ad'>Bar / Nightlife</span> \u00b7 $$<br><small>35 Buitengracht St, Cape Town CBD, South Africa</small>", "#8e44ad", "Bar / Nightlife");
+  addPin(-33.9248, 18.4168, "<b>The Gin Bar</b><br><span style='color:#8e44ad'>Bar / Nightlife</span> \u00b7 $$<br><small>64A Wale St, Cape Town CBD, South Africa</small>", "#8e44ad", "Bar / Nightlife");
+  addPin(-33.9299716, 18.4081345, "<b>The Power & The Glory</b><br><span style='color:#8e44ad'>Bar / Nightlife</span> \u00b7 $$<br><small>13D Kloof Nek Rd, Gardens, Cape Town, South Africa</small>", "#8e44ad", "Bar / Nightlife");
+  addPin(-33.9300337, 18.4109297, "<b>Yours Truly</b><br><span style='color:#8e44ad'>Bar / Nightlife</span> \u00b7 $$<br><small>73 Kloof St, Gardens, Cape Town, South Africa</small>", "#8e44ad", "Bar / Nightlife");
+  addPin(-33.9161338, 18.389404, "<b>Montreal Sea Point</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $<br><small>295 Main Rd, Sea Point, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9178, 18.3875, "<b>Ocean Basket</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $$<br><small>St Johns Piazza, Sea Point, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9161338, 18.389404, "<b>Our Local</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $$<br><small>295 Main Rd, Sea Point, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-34.1645071, 18.860296, "<b>Thirsty Oyster Tavern</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $$<br><small>156 Beach Rd, Gordon's Bay, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9009527, 18.4123946, "<b>SaunaHaus</b><br><span style='color:#16a085'>Wellness</span> \u00b7 $$<br><small>160 Beach Rd, Mouille Point, Cape Town, South Africa</small>", "#16a085", "Wellness");
+  addPin(-33.9121494, 18.3887892, "<b>Saunders Rock Tidal Pools</b><br><span style='color:#16a085'>Wellness</span> \u00b7 Free<br><small>Beach Rd, Sea Point, Cape Town, South Africa</small>", "#16a085", "Wellness");
+  addPin(-33.9429541, 18.3744474, "<b>The Bungalow</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$$<br><small>3 Victoria Rd, Clifton, Cape Town, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.9756398, 18.3689567, "<b>Surf Shack</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $$<br><small>Victoria Rd, Camps Bay, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9756398, 18.3689567, "<b>La Belle Bistro</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $$<br><small>Victoria Rd, Camps Bay, Cape Town, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.9539526, 18.3776296, "<b>The Pottery</b><br><span style='color:#f1c40f'>Brunch & Cafe</span> \u00b7 $<br><small>41 The Drive, Camps Bay, Cape Town, South Africa</small>", "#f1c40f", "Brunch & Cafe");
+  addPin(-33.9439805, 18.3824749, "<b>The Lawn at the Roundhouse</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$<br><small>Round House Rd, Camps Bay, Cape Town, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-33.9547736, 18.3818524, "<b>The Lawns</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $$<br><small>Camps Bay, Cape Town, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-33.9218, 18.4195, "<b>Burger & Lobster</b><br><span style='color:#f39c12'>Casual / Lunch</span> \u00b7 $$<br><small>Heritage Square, Bree St, Cape Town CBD, South Africa</small>", "#f39c12", "Casual / Lunch");
+  addPin(-34.1278, 18.4497, "<b>Live Bait Restaurant</b><br><span style='color:#e67e22'>Dinner</span> \u00b7 $$<br><small>Kalk Bay Harbour, Kalk Bay, Cape Town, South Africa</small>", "#e67e22", "Dinner");
+  addPin(-34.0016, 18.4165, "<b>La Colombe</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$$<br><small>Silvermist Wine Estate, Constantia Nek, Cape Town, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-33.9063101, 19.1008741, "<b>La Petite Colombe</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$$<br><small>Leeu Estates, Dassenberg Rd, Franschhoek, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-34.0137849, 18.4564184, "<b>Chef's Warehouse</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$<br><small>1043 Constantia Main Rd, Constantia, Cape Town, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-33.909167, 19.119444, "<b>Aperitif</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$<br><small>Franschhoek, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-33.9060023, 18.4195264, "<b>The Waterside</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$<br><small>V&A Waterfront, Cape Town, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-32.8088181, 17.8882269, "<b>Wolfgat</b><br><span style='color:#e74c3c'>Fine Dining</span> \u00b7 $$$$<br><small>10 Sampson St, Paternoster, South Africa</small>", "#e74c3c", "Fine Dining");
+  addPin(-33.9352664, 18.4140147, "<b>Oranjezicht City Farm Market</b><br><span style='color:#2ecc71'>Market</span> \u00b7 Free<br><small>Upper Orange St, Oranjezicht, Cape Town, South Africa</small>", "#2ecc71", "Market");
+  addPin(-33.9269606, 18.4400815, "<b>Flour Market</b><br><span style='color:#2ecc71'>Market</span> \u00b7 Free<br><small>The Palms, Woodstock, Cape Town, South Africa</small>", "#2ecc71", "Market");
+  addPin(-33.9273056, 18.4573803, "<b>The Neighbourgoods Market</b><br><span style='color:#2ecc71'>Market</span> \u00b7 Free<br><small>373 Albert Rd, Woodstock, Cape Town, South Africa</small>", "#2ecc71", "Market");
+  addPin(-33.9192401, 18.3857636, "<b>The Mojo Market</b><br><span style='color:#2ecc71'>Market</span> \u00b7 Free<br><small>30 Regent Rd, Sea Point, Cape Town, South Africa</small>", "#2ecc71", "Market");
+  addPin(-34.0501638, 18.3448001, "<b>Bay Harbour Market</b><br><span style='color:#2ecc71'>Market</span> \u00b7 Free<br><small>31 Harbour Rd, Hout Bay, Cape Town, South Africa</small>", "#2ecc71", "Market");
+  addPin(-33.9082485, 18.4222616, "<b>Zeitz MOCAA</b><br><span style='color:#3498db'>Activity</span> \u00b7 $$<br><small>Silo District, V&A Waterfront, Cape Town, South Africa</small>", "#3498db", "Activity");
+  addPin(-33.9856109, 18.4301425, "<b>Kirstenbosch Botanical Garden</b><br><span style='color:#3498db'>Activity</span> \u00b7 $$<br><small>Rhodes Dr, Newlands, Cape Town, South Africa</small>", "#3498db", "Activity");
+  addPin(-34.1980602, 18.4523585, "<b>Boulders Beach</b><br><span style='color:#3498db'>Activity</span> \u00b7 $$<br><small>Boulders Beach, Simon's Town, Cape Town, South Africa</small>", "#3498db", "Activity");
+  addPin(-34.3573947, 18.4977883, "<b>Cape of Good Hope</b><br><span style='color:#3498db'>Activity</span> \u00b7 $$<br><small>Cape Point, Cape Town, South Africa</small>", "#3498db", "Activity");
+  addPin(-33.926, 18.9765, "<b>Bartinney Wine Estate</b><br><span style='color:#c0392b'>Wine Farm</span> \u00b7 $$<br><small>R310, Banhoek Valley, Stellenbosch, South Africa</small>", "#c0392b", "Wine Farm");
+  addPin(-33.8238481, 18.9264143, "<b>Babylonstoren</b><br><span style='color:#c0392b'>Wine Farm</span> \u00b7 $$$<br><small>Simondium, Paarl, South Africa</small>", "#c0392b", "Wine Farm");
+  addPin(-33.7388889, 19.0083333, "<b>Avondale Winery</b><br><span style='color:#c0392b'>Wine Farm</span> \u00b7 $$<br><small>Klein Drakenstein, Paarl, South Africa</small>", "#c0392b", "Wine Farm");
+  addPin(-33.9509089, 18.3777222, "<b>Camps Bay Beach</b><br><span style='color:#1abc9c'>Beach</span> \u00b7 Free<br><small>Camps Bay, Cape Town, South Africa</small>", "#1abc9c", "Beach");
+  addPin(-33.9403112, 18.3754304, "<b>Clifton 4th Beach</b><br><span style='color:#1abc9c'>Beach</span> \u00b7 Free<br><small>Clifton, Cape Town, South Africa</small>", "#1abc9c", "Beach");
+  addPin(-33.9602393, 18.3731473, "<b>Bakoven Beach</b><br><span style='color:#1abc9c'>Beach</span> \u00b7 Free<br><small>Bakoven, Cape Town, South Africa</small>", "#1abc9c", "Beach");
+  addPin(-33.9468992, 18.3778647, "<b>Glen Beach</b><br><span style='color:#1abc9c'>Beach</span> \u00b7 Free<br><small>Glen Beach, Camps Bay, Cape Town, South Africa</small>", "#1abc9c", "Beach");
+  addPin(-34.0081197, 18.3412602, "<b>Llandudno Beach</b><br><span style='color:#1abc9c'>Beach</span> \u00b7 Free<br><small>Llandudno, Cape Town, South Africa</small>", "#1abc9c", "Beach");
+  addPin(-34.102778, 18.38, "<b>Noordhoek Beach</b><br><span style='color:#1abc9c'>Beach</span> \u00b7 Free<br><small>Noordhoek, Cape Town, South Africa</small>", "#1abc9c", "Beach");
+  addPin(-33.9180976, 18.4023305, "<b>Signal Hill</b><br><span style='color:#27ae60'>Hike / Viewpoint</span> \u00b7 Free<br><small>Signal Hill, Cape Town, South Africa</small>", "#27ae60", "Hike / Viewpoint");
+  addPin(-33.9461094, 18.4006449, "<b>Table Mountain</b><br><span style='color:#27ae60'>Hike / Viewpoint</span> \u00b7 $$<br><small>Table Mountain Aerial Cableway, Cape Town, South Africa</small>", "#27ae60", "Hike / Viewpoint");
+  addPin(-34.0198471, 18.3491519, "<b>Lions Head</b><br><span style='color:#27ae60'>Hike / Viewpoint</span> \u00b7 Free<br><small>Lion's Head, Cape Town, South Africa</small>", "#27ae60", "Hike / Viewpoint");
+  addPin(-33.9563, 18.4012, "<b>Kloof Corner</b><br><span style='color:#27ae60'>Hike / Viewpoint</span> \u00b7 Free<br><small>Kloof Corner, Table Mountain, Cape Town, South Africa</small>", "#27ae60", "Hike / Viewpoint");
+  addPin(-33.986, 18.431, "<b>Skeleton Gorge</b><br><span style='color:#27ae60'>Hike / Viewpoint</span> \u00b7 Free<br><small>Skeleton Gorge Trail, Kirstenbosch, Cape Town, South Africa</small>", "#27ae60", "Hike / Viewpoint");
+  addPin(-33.954, 18.393, "<b>The Pipe Track</b><br><span style='color:#27ae60'>Hike / Viewpoint</span> \u00b7 Free<br><small>Pipe Track, Table Mountain, Cape Town, South Africa</small>", "#27ae60", "Hike / Viewpoint");
+  addPin(-33.9415, 18.3762, "<b>Maiden's Cove</b><br><span style='color:#e74c3c'>Sunset Spot</span> \u00b7 Free<br><small>Maiden's Cove, Camps Bay, Cape Town, South Africa</small>", "#e74c3c", "Sunset Spot");
+</script>
+</body>
+</html>
